@@ -83,8 +83,8 @@ private class TranscriptStripper : PDFTextStripper() {
             val line = text.replace(Regex("\\s*$lineNumber\\s*$"), "")
 
             if (textPositions.any { rectangles.any { r -> r.intersects(it) } }) {
-                // if there's a long rectangle on this line, it's a separator
-                addSeparator()
+                // if there's a long rectangle on this line, it's a ruler
+                addRuler()
                 speaker = null
                 writeString("===")
             } else if (textPositions.any(TextPosition::isBold) || swornRegex.matches(line)) {
@@ -120,7 +120,7 @@ private class TranscriptStripper : PDFTextStripper() {
                         writeString(infoText)
                     } else {
                         val spokenText = lineText.trim()
-                        addText(speaker = speaker!!, text = spokenText)
+                        addSpeech(speaker = speaker!!, text = spokenText)
                         writeString("$speaker: $spokenText")
                     }
                 } else {
@@ -132,7 +132,7 @@ private class TranscriptStripper : PDFTextStripper() {
         lineNumber++
     }
 
-    private fun addSeparator() = _lines.add(
+    private fun addRuler() = _lines.add(
         Line(
             type = LineType.RULER,
             page = pageNumber!!,
@@ -167,7 +167,7 @@ private class TranscriptStripper : PDFTextStripper() {
         )
     )
 
-    private fun addText(speaker: String, text: String) = _lines.add(
+    private fun addSpeech(speaker: String, text: String) = _lines.add(
         Line(
             type = LineType.SPEECH,
             speaker = speakerAlias.getOrDefault(speaker, speaker),
