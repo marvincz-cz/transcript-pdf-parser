@@ -12,15 +12,21 @@ Start the application from the command line with appropriate arguments.
 
 ### Unix
 ```shell
-bin/transcript-pdf-parser [<options>]
+bin/transcript-pdf-parser <command> [<options>]
 ```
 
 ### Windows
 ```shell
-bin\transcript-pdf-parser.bat [<options>]
+bin\transcript-pdf-parser.bat <command> [<options>]
 ```
 
-### Options:
+### Commands:
+
+There are two commands:
+* **parse** - Parse a transcript PDF
+* **combine** - Combine multiple transcript JSONs into one
+
+#### parse
 
 `--pdf=<path>`
 : The transcript PDF file
@@ -30,6 +36,14 @@ bin\transcript-pdf-parser.bat [<options>]
 
 `--output=<path>`
 : The output JSON file
+
+#### combine
+
+`-i`, `--input`
+: The JSON files to be combined. Repeat for each file.
+
+`-o`, `--output`
+: The combined JSON file
 
 ## Speaker alias file
 
@@ -65,7 +79,7 @@ SPEAKER NAME 2=ALIAS NAME 2
 .
 ```
 
-## Output
+## Output JSON
 
 The output is a JSON file with two properties. First is a list of speakers,
 second is a list of all lines classified and with the speaker and text isolated.
