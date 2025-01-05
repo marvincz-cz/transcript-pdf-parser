@@ -57,6 +57,7 @@ private class TranscriptStripper : PDFTextStripper() {
     private var answering: String? = null
 
     private var speakerAlias = emptyMap<String, String>()
+    private var minLineStartX: Float? = null
 
     override fun startDocument(document: PDDocument?) {
         super.startDocument(document)
@@ -76,11 +77,17 @@ private class TranscriptStripper : PDFTextStripper() {
      * Parse a line of text
      */
     override fun writeString(text: String, textPositions: MutableList<TextPosition>) {
+        if (text.isBlank()) return
+
         if (pageNumber == null) {
             // first line on the page is a page number
             pageNumber = text.trim()
         } else {
             val line = text.replace(Regex("\\s*$lineNumber\\s*$"), "")
+            // if there is other text than just the page number, we track the leftmost text position
+            if (line.isNotBlank()) {
+                minLineStartX = min(minLineStartX, textPositions.lineStartX)
+            }
 
             if (textPositions.any { rectangles.any { r -> r.intersects(it) } }) {
                 // if there's a long rectangle on this line, it's a ruler
@@ -96,6 +103,9 @@ private class TranscriptStripper : PDFTextStripper() {
                 var speakerMatched = false
 
                 val lineText = speakerRegex.matchEntire(line)?.let { speakerMatch ->
+                    // if the line is too indented, we don't try to match speaker to help with false positives
+                    if (textPositions.leftIndent() > 20) return@let null
+
                     val matchedSpeaker = speakerMatch.groups["speaker"]!!.value.trimEnd(':')
                     speaker = when {
                         "Q" == matchedSpeaker -> questioning ?: "Q"
@@ -110,7 +120,7 @@ private class TranscriptStripper : PDFTextStripper() {
                 } ?: line
 
                 if (lineText.isNotBlank()) {
-                    if (!speakerMatched && parenthesisRegex.matches(lineText)) {
+                    if (!speakerMatched && parenthesisRegex.matches(lineText) && (lines.isEmpty() || lines.last().type == LineType.PARAGRAPH)) {
                         val annotationText = lineText.trim().trim('(', ')')
                         addAnnotation(text = annotationText)
                         writeString(annotationText)
@@ -233,13 +243,26 @@ private class TranscriptStripper : PDFTextStripper() {
             return rectangle.intersects(other)
         }
     }
+
+    private fun List<TextPosition>.leftIndent() = lineStartX?.let { x ->
+        minLineStartX?.let { minX -> x - minX }
+    } ?: 0f
 }
 
-private val swornRegex = Regex("^(?<sworn>[^,\\p{Ll}]+), (?:Previously )?Sworn, Examined by .+\$")
+private val swornRegex = Regex("^(?<sworn>[^,\\p{Ll}]+), (?:Previously )?Sworn, (?:Cross-e|E)xamined by .+\$")
 private val speakerRegex = Regex("^(?! )(?<speaker>[^\\p{Ll}]+:|Q|A)\\s+(?<text>.+)")
-private val parenthesisRegex = Regex("\\([^()\\p{Ll}]+\\)")
+private val parenthesisRegex = Regex("\\([^()]+\\)")
 
 /**
  * Check if the text is bold. Sometimes there is bold font on whitespace, that is a false positive for what we want
  */
 private fun TextPosition.isBold() = "Bold" in font.name && visuallyOrderedUnicode.isNotBlank()
+
+private val List<TextPosition>.lineStartX
+    get() = firstOrNull { it.visuallyOrderedUnicode.isNotBlank() }?.x
+
+private fun min(x: Float?, y: Float?): Float? {
+    return if (x == null) y
+    else if (y == null) x
+    else kotlin.math.min(x, y)
+}
