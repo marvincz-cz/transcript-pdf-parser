@@ -249,7 +249,7 @@ private class TranscriptStripper : PDFTextStripper() {
     } ?: 0f
 }
 
-private val swornRegex = Regex("^(?<sworn>[^,\\p{Ll}]+), (?:Previously )?Sworn, (?:Cross-e|E)xamined by .+\$")
+private val swornRegex = Regex("^(?<sworn>[^,\\p{Ll}]+), (?:Previously )?(?:Sworn|Affirmed|Acknowledges Oath), (?:Cross-e|E)xamined by .+\$")
 private val speakerRegex = Regex("^(?! )(?<speaker>[^\\p{Ll}]+:|Q|A)\\s+(?<text>.+)")
 private val parenthesisRegex = Regex("\\([^()]+\\)")
 
