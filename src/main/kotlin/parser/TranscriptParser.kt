@@ -95,7 +95,7 @@ private class TranscriptStripper : PDFTextStripper() {
                 speaker = null
                 writeString("===")
             } else if (textPositions.any(TextPosition::isBold) || swornRegex.matches(line)) {
-                swornRegex.matchEntire(line)?.let { answering = it.groups["sworn"]!!.value }
+                swornRegex.matchEntire(line)?.let { answering = it.groupValue("sworn") }
                 addHeader(text = line.trim())
                 speaker = null
                 writeString("NARRATOR: ${text.trim()}")
@@ -106,7 +106,7 @@ private class TranscriptStripper : PDFTextStripper() {
                     // if the line is too indented, we don't try to match speaker to help with false positives
                     if (textPositions.leftIndent() > 20) return@let null
 
-                    val matchedSpeaker = speakerMatch.groups["speaker"]!!.value.trimEnd(':')
+                    val matchedSpeaker = speakerMatch.groupValue("speaker").trimEnd(':')
                     speaker = when {
                         "Q" == matchedSpeaker -> questioning ?: "Q"
                         "A" == matchedSpeaker -> answering ?: "A"
@@ -116,12 +116,13 @@ private class TranscriptStripper : PDFTextStripper() {
                         else -> matchedSpeaker
                     }
                     speakerMatched = true
-                    speakerMatch.groups["text"]!!.value
+                    speakerMatch.groupValue("text")
                 } ?: line
 
                 if (lineText.isNotBlank()) {
-                    if (!speakerMatched && parenthesisRegex.matches(lineText) && (lines.isEmpty() || lines.last().type == LineType.PARAGRAPH)) {
-                        val annotationText = lineText.trim().trim('(', ')')
+                    val parenthesisMatch = parenthesisRegex.matchEntire(lineText)
+                    if (!speakerMatched && parenthesisMatch != null && parenthesisMatch.groupValue("text") !in notAnnotations && (lines.isEmpty() || lines.last().type == LineType.PARAGRAPH)) {
+                        val annotationText = parenthesisMatch.groupValue("text")
                         addAnnotation(text = annotationText)
                         writeString(annotationText)
                     } else if (speaker == null) {
@@ -247,11 +248,19 @@ private class TranscriptStripper : PDFTextStripper() {
     private fun List<TextPosition>.leftIndent() = lineStartX?.let { x ->
         minLineStartX?.let { minX -> x - minX }
     } ?: 0f
+
+    private fun MatchResult.groupValue(name: String): String {
+        return groups[name]!!.value
+    }
 }
 
 private val swornRegex = Regex("^(?<sworn>[^,\\p{Ll}]+), (?:Previously )?(?:Sworn|Affirmed|Acknowledges Oath), (?:Cross-e|E)xamined by .+\$")
 private val speakerRegex = Regex("^(?! )(?<speaker>[^\\p{Ll}]+:|Q|A)\\s+(?<text>.+)")
-private val parenthesisRegex = Regex("\\s*\\([^()]+\\)\\s*")
+private val parenthesisRegex = Regex("\\s*\\((?<text>[^()]+)\\)\\p{P}?")
+
+private val notAnnotations = listOf(
+    "sic", "As read", "All", "phonetic", "NO AUDIBLE RESPONSE", "No audible response", "UNREPORTABLE SOUND"
+)
 
 /**
  * Check if the text is bold. Sometimes there is bold font on whitespace, that is a false positive for what we want
