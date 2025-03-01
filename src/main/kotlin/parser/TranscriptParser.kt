@@ -94,7 +94,7 @@ private class TranscriptStripper : PDFTextStripper() {
                 addRuler()
                 speaker = null
                 writeString("===")
-            } else if (textPositions.any(TextPosition::isBold) || swornRegex.matches(line)) {
+            } else if (textPositions.any(TextPosition::isBold) || swornRegex.matches(line) || crossRegex.matches(line)) {
                 swornRegex.matchEntire(line)?.let { answering = it.groupValue("sworn") }
                 addHeader(text = line.trim())
                 speaker = null
@@ -254,7 +254,8 @@ private class TranscriptStripper : PDFTextStripper() {
     }
 }
 
-private val swornRegex = Regex("^(?<sworn>[^,\\p{Ll}]+), (?:Previously )?(?:Sworn|Affirmed|Acknowledges Oath), (?:Cross-e|E)xamined by .+\$")
+private val swornRegex = Regex("^(?<sworn>[^,\\p{Ll}]+), (?:Previously )?(?:Sworn|Affirmed|Acknowledges Oath), (?:Cross-e|E)xamined by .+$")
+private val crossRegex = Regex("^.+ Cross-examines the Witness$")
 private val speakerRegex = Regex("^(?! )(?<speaker>[^\\p{Ll}]+:|Q|A)\\s+(?<text>.+)")
 private val parenthesisRegex = Regex("\\s*\\((?<text>[^()]+)\\)\\p{P}?")
 
